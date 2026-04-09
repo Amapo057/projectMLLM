@@ -43,3 +43,10 @@
         </intent>
     </queries>
 </manifest>
+<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+<uses-permission android:name="android.permission.INTERNET"/>
+
+<!-- Android SDK 30+ 필수 -->
+<queries>
+    <package android:name="com.google.android.googlequicksearchbox"/>
+</queries>
