@@ -3,6 +3,7 @@ import '../services/gemini_service.dart';
 import '../services/weather_service.dart';
 import '../services/bus_service.dart';
 import '../services/stt_service.dart';
+import '../services/calendar_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _weatherInfo = '';
   bool _isLoading = false;
   bool _isListening = false; // ← STT 상태 추가
+  bool _debugMode = false;
 
   // ── 생명주기 ────────────────────────────────────────────────
   @override
@@ -94,16 +96,37 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
+      // 일정 키워드 감지
+      if (CalendarService.hasCalendarKeyword(prompt)) {
+        setState(() => _statusMessage = '📅 일정 키워드 감지됨. 캘린더 읽는 중…');
+        final calSummary = await CalendarService.getSummary();
+        if (calSummary.isNotEmpty) {
+          finalPrompt = '$finalPrompt\n$calSummary';
+          setState(() => _statusMessage = '✅ 일정 수신 완료. Gemini에 요청 중…');
+        }
+      }
+
       if (!WeatherService.hasWeatherKeyword(prompt) &&
-          !BusService.hasBusKeyword(prompt)) {
+          !BusService.hasBusKeyword(prompt) &&
+          !CalendarService.hasCalendarKeyword(prompt)) {
         setState(() => _statusMessage = 'Gemini에 요청 중…');
       }
 
-      final response = await GeminiService.ask(finalPrompt);
-      setState(() {
-        _response = response;
-        _statusMessage = '';
-      });
+      if (_debugMode) {
+        // 디버그 모드: 프롬프트만 출력, Gemini 호출 안 함
+        setState(() {
+          _response = '[DEBUG] 최종 프롬프트:\n\n$finalPrompt';
+          _statusMessage = '';
+        });
+      } else {
+        // 일반 모드: Gemini 호출
+        final response = await GeminiService.ask(finalPrompt);
+        setState(() {
+          _response = response;
+          _statusMessage = '';
+        });
+        // TtsService.speak(response);
+      }
     } finally {
       setState(() => _isLoading = false);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -128,6 +151,14 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Gemini AI 비서'),
         backgroundColor: cs.inversePrimary,
+        actions: [
+          IconButton(
+            icon: Icon(_debugMode ? Icons.bug_report : Icons.bug_report_outlined),
+            color: _debugMode ? Colors.red : null,
+            onPressed: () => setState(() => _debugMode = !_debugMode),
+            tooltip: '디버그 모드',
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
