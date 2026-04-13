@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../services/gemini_service.dart';
 import '../services/weather_service.dart';
 import '../services/bus_service.dart';
 import '../services/stt_service.dart';
 import '../services/calendar_service.dart';
+import '../services/tts_service.dart';
+import '../services/wake_word_service.dart';
+import '../widgets/orb_painter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,282 +22,229 @@ class _HomeScreenState extends State<HomeScreen> {
   final _scrollController = ScrollController();
 
   String _response = '';
-  String _statusMessage = '';
-  String _weatherInfo = '';
   bool _isLoading = false;
-  bool _isListening = false; // ← STT 상태 추가
+  bool _isListening = false;
   bool _debugMode = false;
+  bool _isStandby = true;
+
+  late WakeWordService _wakeWordService;
+  Timer? _standbyTimer;
+  static const _sttTimeout = Duration(seconds: 8);
 
   // ── 생명주기 ────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
-    SttService.init(); // 앱 시작 시 STT 초기화
+    SttService.init();
+    TtsService.init();
+
+    _wakeWordService = WakeWordService(onWakeWordDetected: _exitStandby);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _enterStandby());
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _wakeWordService.dispose();
+    _standbyTimer?.cancel();
+    WakelockPlus.disable();
     super.dispose();
   }
 
-  // ── STT ─────────────────────────────────────────────────────
-  Future<void> _toggleListening() async {
-    if (SttService.isListening) {
-      await SttService.stopListening();
-      setState(() => _isListening = false);
-    } else {
-      setState(() => _isListening = true);
-      await SttService.startListening((text) {
-        setState(() {
-          _controller.text = text;
-          _isListening = false;
-        });
-        _send(); // 인식 완료 시 자동 전송
+  // ── 대기 모드 ────────────────────────────────────────────────
+  Future<void> _enterStandby() async {
+    _standbyTimer?.cancel();
+    await _wakeWordService.init();
+    await WakelockPlus.enable();
+    if (mounted) setState(() => _isStandby = true);
+  }
+
+  Future<void> _exitStandby() async {
+    await _wakeWordService.stop();
+    if (!mounted) return;
+    setState(() => _isStandby = false);
+    await Future.delayed(const Duration(milliseconds: 300));
+    _startListeningAndSend();
+  }
+
+  // ── 대기 해제 후 STT 자동 시작 ─────────────────────────────
+  Future<void> _startListeningAndSend() async {
+    if (SttService.isListening) return;
+
+    _standbyTimer?.cancel();
+    _standbyTimer = Timer(_sttTimeout, () {
+      if (mounted && !_isLoading) _enterStandby();
+    });
+
+    setState(() => _isListening = true);
+    await SttService.startListening((text) {
+      _standbyTimer?.cancel();
+      if (!mounted) return;
+      setState(() {
+        _controller.text = text;
+        _isListening = false;
       });
-    }
+      _send();
+    });
   }
 
   // ── Gemini 전송 ──────────────────────────────────────────────
   Future<void> _send() async {
     final prompt = _controller.text.trim();
-    if (prompt.isEmpty) return;
+    if (prompt.isEmpty) {
+      _enterStandby();
+      return;
+    }
 
     setState(() {
       _isLoading = true;
       _response = '';
-      _statusMessage = '';
-      _weatherInfo = '';
     });
 
     try {
       String finalPrompt = prompt;
 
-      // 날씨 키워드 감지
       if (WeatherService.hasWeatherKeyword(prompt)) {
-        setState(() => _statusMessage = '🌤 날씨 키워드 감지됨. Open-Meteo 요청 중…');
         final weatherSummary = await WeatherService.getSummary();
-
         if (weatherSummary.isNotEmpty) {
-          setState(() {
-            _weatherInfo = weatherSummary;
-            _statusMessage = '✅ 날씨 정보 수신 완료. Gemini에 요청 중…';
-          });
           finalPrompt = '$weatherSummary\n\n위 정보를 참고해서 답해줘: $prompt';
-        } else {
-          setState(() => _statusMessage = '⚠️ 날씨 수신 실패. 날씨 정보 없이 요청 중…');
         }
       }
 
-      // 버스 키워드 감지
       if (BusService.hasBusKeyword(prompt)) {
-        setState(() => _statusMessage = '🚌 버스 키워드 감지됨. 도착 정보 요청 중…');
         final busSummary = await BusService.getSummary();
-
-        if (busSummary.isNotEmpty) {
-          finalPrompt = '$finalPrompt\n$busSummary';
-          setState(() => _statusMessage = '✅ 버스 정보 수신 완료. Gemini에 요청 중…');
-        }
+        if (busSummary.isNotEmpty) finalPrompt = '$finalPrompt\n$busSummary';
       }
 
-      // 일정 키워드 감지
       if (CalendarService.hasCalendarKeyword(prompt)) {
-        setState(() => _statusMessage = '📅 일정 키워드 감지됨. 캘린더 읽는 중…');
         final calSummary = await CalendarService.getSummary();
-        if (calSummary.isNotEmpty) {
-          finalPrompt = '$finalPrompt\n$calSummary';
-          setState(() => _statusMessage = '✅ 일정 수신 완료. Gemini에 요청 중…');
-        }
-      }
-
-      if (!WeatherService.hasWeatherKeyword(prompt) &&
-          !BusService.hasBusKeyword(prompt) &&
-          !CalendarService.hasCalendarKeyword(prompt)) {
-        setState(() => _statusMessage = 'Gemini에 요청 중…');
+        if (calSummary.isNotEmpty) finalPrompt = '$finalPrompt\n$calSummary';
       }
 
       if (_debugMode) {
-        // 디버그 모드: 프롬프트만 출력, Gemini 호출 안 함
-        setState(() {
-          _response = '[DEBUG] 최종 프롬프트:\n\n$finalPrompt';
-          _statusMessage = '';
-        });
+        setState(() => _response = '[DEBUG] 최종 프롬프트:\n\n$finalPrompt');
       } else {
-        // 일반 모드: Gemini 호출
         final response = await GeminiService.ask(finalPrompt);
+        if (!mounted) return;
         setState(() {
           _response = response;
-          _statusMessage = '';
+          _isLoading = false;
         });
-        // TtsService.speak(response);
+        await TtsService.speak(response);
+        if (mounted) _enterStandby();
       }
     } finally {
-      setState(() => _isLoading = false);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
+      if (mounted && _isLoading) setState(() => _isLoading = false);
     }
   }
 
   // ── UI ───────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     return Scaffold(
-      backgroundColor: cs.surface,
-      appBar: AppBar(
-        title: const Text('Gemini AI 비서'),
-        backgroundColor: cs.inversePrimary,
-        actions: [
-          IconButton(
-            icon: Icon(_debugMode ? Icons.bug_report : Icons.bug_report_outlined),
-            color: _debugMode ? Colors.red : null,
-            onPressed: () => setState(() => _debugMode = !_debugMode),
-            tooltip: '디버그 모드',
-          ),
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          if (!_isStandby) _buildRedCircle(),
+          if (_debugMode && _response.isNotEmpty) _buildDebugOverlay(),
+          _buildCornerButtons(),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    );
+  }
+
+  // ── 붉은 원 ─────────────────────────────────────────────────
+  Widget _buildRedCircle() {
+    return Center(
+      child: SizedBox(
+        width: 200,
+        height: 200,
+        child: _isLoading
+            ? Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(200, 200),
+                    painter: OrbPainter(),
+                  ),
+                  const SizedBox(
+                    width: 34,
+                    height: 34,
+                    child: CircularProgressIndicator(
+                      color: Colors.white70,
+                      strokeWidth: 2.5,
+                    ),
+                  ),
+                ],
+              )
+            : CustomPaint(
+                size: const Size(200, 200),
+                painter: OrbPainter(),
+              ),
+      ),
+    );
+  }
+
+  // ── 디버그 오버레이 ──────────────────────────────────────────
+  Widget _buildDebugOverlay() {
+    return Positioned(
+      left: 16,
+      right: 16,
+      bottom: 40,
+      height: 220,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white10,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: Text(
+            _response,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 코너 버튼 ────────────────────────────────────────────────
+  Widget _buildCornerButtons() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // 입력창
-            TextField(
-              controller: _controller,
-              minLines: 2,
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: '질문을 입력하세요…',
-                labelText: '입력',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: cs.surfaceContainerLow,
+            IconButton(
+              icon: Icon(
+                _isStandby ? Icons.radio_button_off : Icons.nightlight_round,
+                color: Colors.white30,
+                size: 22,
               ),
+              tooltip: _isStandby ? '대기 해제' : '대기 모드',
+              onPressed: _isStandby ? _exitStandby : _enterStandby,
             ),
-            const SizedBox(height: 12),
-
-            // 확인 버튼 + 마이크 버튼
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _isLoading ? null : _send,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.5),
-                          )
-                        : const Text('확인', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // 마이크 버튼
-                IconButton.filled(
-                  onPressed: _isLoading ? null : _toggleListening,
-                  icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
-                  style: IconButton.styleFrom(
-                    backgroundColor: _isListening ? Colors.red : null,
-                    padding: const EdgeInsets.all(14),
-                  ),
-                ),
-              ],
+            IconButton(
+              icon: Icon(
+                _debugMode ? Icons.bug_report : Icons.bug_report_outlined,
+                color: _debugMode ? Colors.redAccent : Colors.white30,
+                size: 22,
+              ),
+              tooltip: '디버그 모드',
+              onPressed: () => setState(() {
+                _debugMode = !_debugMode;
+                if (!_debugMode) _response = '';
+              }),
             ),
-            const SizedBox(height: 16),
-
-            // 상태 메시지
-            if (_statusMessage.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  _statusMessage,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: cs.primary,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-
-            // 날씨 정보 박스
-            if (_weatherInfo.isNotEmpty)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: cs.primary.withOpacity(0.3)),
-                ),
-                child: Text(
-                  _weatherInfo,
-                  style: TextStyle(fontSize: 12, color: cs.onPrimaryContainer),
-                ),
-              ),
-
-            // 답변 출력
-            if (_response.isNotEmpty) ...[
-              Text(
-                '답변',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: cs.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: cs.outlineVariant),
-                    ),
-                    child: SelectableText(
-                      _response,
-                      style: const TextStyle(fontSize: 15, height: 1.6),
-                    ),
-                  ),
-                ),
-              ),
-            ] else if (_isLoading)
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: cs.primary),
-                      const SizedBox(height: 12),
-                      Text(
-                        '응답 대기 중…',
-                        style: TextStyle(color: cs.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
       ),
