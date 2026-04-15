@@ -27,6 +27,8 @@
 /packages/flutter/coverage/
 version
 analysis_benchmark.json
+/old
+/oldCode
 
 # packages file containing multi-root paths
 .packages.generated
