@@ -3,6 +3,7 @@ import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
+from service import stt
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -33,12 +34,18 @@ class MainWindow(QMainWindow):
             self.close()
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    # app = QApplication(sys.argv)
     
-    # 마우스 커서 숨기기 (선택 사항: 완전히 깔끔한 화면을 원할 때)
-    # app.setOverrideCursor(Qt.CursorShape.BlankCursor)
+    # # 마우스 커서 숨기기 (선택 사항: 완전히 깔끔한 화면을 원할 때)
+    # # app.setOverrideCursor(Qt.CursorShape.BlankCursor)
     
-    window = MainWindow()
-    window.show()
+    # window = MainWindow()
+    # window.show()
     
-    sys.exit(app.exec())
+    # sys.exit(app.exec())
+    stt_module = stt.STT()
+    result = stt_module.listen_and_recognize()
+    if result:
+        print(result)
+    else:
+        print("실패")
