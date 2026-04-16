@@ -9,6 +9,7 @@ openwakeword>=0.6.0
 
 # STT
 SpeechRecognition>=3.16.0
+SpeechRecognition[whisper-local]
 
 # TTS 및 오디오 재생
 edge-tts>=7.2.8

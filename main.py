@@ -1,51 +1,73 @@
 # main.py
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
-from service import stt
+from dotenv import load_dotenv
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.init_ui()
+# 모든 서비스 임포트
+from services.wake_word_service import WakeWordService
+from services.stt_service import STTService 
+from services.gemini_service import GeminiService
+from services.weather_service import WeatherService
+from services.tts_service import TTSService
 
-    def init_ui(self):
-        # 1. 윈도우 기본 설정 (타이틀 바 없는 전체 화면)
-        self.setWindowTitle("Jarvis MLLM")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-        self.showFullScreen()  # 스팀덱(리눅스 데스크탑 모드)에 맞춰 전체 화면 실행
-        
-        # 2. 배경을 완전한 검은색으로 설정
-        self.setStyleSheet("background-color: black;")
-        
-        # 3. 중앙 위젯 설정 (나중에 여기에 OrbPainter가 들어갈 예정)
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        
-        # 4. 레이아웃 (정중앙 정렬)
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        central_widget.setLayout(layout)
-        
-    def keyPressEvent(self, event):
-        # 테스트용: ESC 키를 누르면 프로그램 강제 종료
-        if event.key() == Qt.Key.Key_Escape:
-            self.close()
+def main():
+    load_dotenv()
+    
+    print("="*50)
+    print("시스템 초기화 중... (UI 비활성화 모드)")
+    
+    # 1. 서비스 객체 초기화
+    wake_word_service = WakeWordService(wakeword_model="hey_mycroft") # 테스트용 모델
+    stt_service = STTService()
+    gemini_service = GeminiService()
+    weather_service = WeatherService()
+    tts_service = TTSService()
+    
+    print("자비스(Jarvis) 테스트 구동 완료. (종료하려면 Ctrl+C)")
+    print("="*50)
+
+    try:
+        while True:
+            # --- [1단계: 백그라운드 호출어 대기] ---
+            print("\n[대기 모드] 호출어('헤이 마이크로프트')를 기다리는 중...")
+            detected = wake_word_service.listen_for_wake_word(threshold=0.5)
+            
+            if not detected:
+                continue
+                
+            print("\n[호출어 감지!] 네, 듣고 있습니다. 명령을 말씀해주세요.")
+            
+            # (옵션) 여기서 "띠링~" 하는 짧은 효과음을 재생해주면 사용자 경험이 매우 좋아집니다.
+
+            # --- [2단계: STT 사용자 명령 인식] ---
+            user_text = stt_service.listen_and_recognize()
+            if not user_text or user_text.strip() == "":
+                print("[알림] 입력된 음성이 없습니다. 다시 대기 모드로 돌아갑니다.")
+                continue
+                
+            print(f"👤 사용자: {user_text}")
+            
+            # --- [3단계: 외부 데이터 수집 (라우팅)] ---
+            context_data = None
+            if "날씨" in user_text:
+                print("☁️ 날씨 정보 수집 중...")
+                context_data = weather_service.get_weather_context()
+
+            # --- [4단계: LLM 응답 생성] ---
+            print("🤖 자비스 생각중...")
+            response_text = gemini_service.generate_response(prompt=user_text, context=context_data)
+            print(f"🤖 자비스: {response_text}")
+            
+            # --- [5단계: TTS 음성 출력] ---
+            tts_service.speak(response_text)
+            
+            # 한 번의 사이클이 끝나면 다시 while 문의 처음(대기 모드)으로 자연스럽게 돌아갑니다.
+
+    except KeyboardInterrupt:
+        print("\n[시스템 종료] 테스트를 마칩니다.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\n[치명적 오류 발생]: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    # app = QApplication(sys.argv)
-    
-    # # 마우스 커서 숨기기 (선택 사항: 완전히 깔끔한 화면을 원할 때)
-    # # app.setOverrideCursor(Qt.CursorShape.BlankCursor)
-    
-    # window = MainWindow()
-    # window.show()
-    
-    # sys.exit(app.exec())
-    stt_module = stt.STT()
-    result = stt_module.listen_and_recognize()
-    if result:
-        print(result)
-    else:
-        print("실패")
+    main()
