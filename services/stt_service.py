@@ -1,62 +1,66 @@
-import speech_recognition as sr
-import logging
+# services/stt_service.py
+from faster_whisper import WhisperModel
+import pyaudio
+import wave
+import os
 
 class STTService:
     def __init__(self):
-        # recognizer 객체 생성
-        self.recognizer = sr.Recognizer()
-
-        # 음성 인식 최적화
-        # 이 수치보다 큰 소리만 음성으로 간주
-        self.recognizer.energy_threshold = 300
-        # 침묵 시간 판단(단위 초)
-        self.recognizer.pause_threshold = 1.2
+        print("[System] Faster-Whisper 모델 로딩 중... (small 모델 권장)")
+        # compute_type="int8" 로 설정하면 메모리 사용량을 절반으로 줄입니다 (스팀덱 최적화)
+        self.model = WhisperModel("small", device="cpu", compute_type="int8")
+        
+        self.FORMAT = pyaudio.paInt16
+        self.CHANNELS = 1
+        self.RATE = 16000
+        self.CHUNK = 1024
+        self.RECORD_SECONDS = 5 # 임시 녹음 시간 (또는 Vosk에서 넘어온 오디오 데이터 사용)
+        self.temp_audio_file = "temp_user_voice.wav"
 
     def listen_and_recognize(self) -> str:
-        # 음성을 텍스트로 반환
-        # 오류 발생, 아무말 없을 시 빈 문자열 반환
-
-        # sr.Micropone과 with문 사용시 알아서 마이크 자원 열고 닫음
-        with sr.Microphone() as source:
-            logging.info("마이크 활성화")
-            # 0.5초동안 배경 소음 측정해 기준점 재설정
-            self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            logging.info("듣는중")
-
-            try:
-                # 마이크 입력 대기
-                # timeout으로 설정한 초만큼 소리가 없으면 대기 종료
-                # pharse_time_limit으로 설정한 초만큼 녹음
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=15)
-            except sr.WaitTimeoutError:
-                # 8초동안 아무말도 안한경우
-                logging.info("입력시간 초과")
-                return ""            
-            logging.info("음성 변환")
-            try:
-                # 한국어 인식 설정
-                text = self.recognizer.recognize_whisper(audio, language='ko')
-
-                logging.info(f"인식된 문장: {text}")
-                return text
-            except sr.UnknownValueError:
-                # 소리는 들었으나 이해못한경우
-                logging.warning("못알아먹음")
-                return ""
-
-# --- 간단한 테스트용 실행 블록 ---
-if __name__ == "__main__":
-    # 로깅 포맷 설정 (콘솔에 예쁘게 출력하기 위함)
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-    
-    print("STT 모듈 단독 테스트를 시작합니다.")
-    stt_module = STT()
-    
-    result = stt_module.listen_and_recognize()
-    if result:
-        print(f"\n[최종 결과] -> {result}")
-    else:
-        print("\n[최종 결과] -> (인식된 텍스트 없음)")
+        """마이크로 음성을 녹음하고 텍스트로 변환합니다."""
+        
+        # 1. 마이크 녹음 (예시용 기본 로직, 필요시 VAD로 말 끝남을 감지하도록 수정 가능)
+        audio = pyaudio.PyAudio()
+        stream = audio.open(format=self.FORMAT, channels=self.CHANNELS,
+                            rate=self.RATE, input=True,
+                            frames_per_buffer=self.CHUNK)
+        
+        print("🎙️ 듣고 있습니다...")
+        frames = []
+        for _ in range(0, int(self.RATE / self.CHUNK * self.RECORD_SECONDS)):
+            data = stream.read(self.CHUNK, exception_on_overflow=False)
+            frames.append(data)
             
+        stream.stop_stream()
+        stream.close()
+        audio.terminate()
 
-                
+        # 임시 wav 파일로 저장
+        with wave.open(self.temp_audio_file, 'wb') as wf:
+            wf.setnchannels(self.CHANNELS)
+            wf.setsampwidth(audio.get_sample_size(self.FORMAT))
+            wf.setframerate(self.RATE)
+            wf.writeframes(b''.join(frames))
+
+        # 2. Faster-Whisper로 STT 변환
+        print("⏳ 텍스트 변환 중...")
+        
+        # [핵심] vad_filter=True 로 환각 방지, initial_prompt로 한국어 힌트 제공
+        segments, info = self.model.transcribe(
+            self.temp_audio_file, 
+            beam_size=5,
+            vad_filter=True, 
+            vad_parameters=dict(min_silence_duration_ms=500),
+            initial_prompt="다음은 한국어로 된 데스크탑 비서에 대한 명령입니다."
+        )
+
+        text_result = ""
+        for segment in segments:
+            text_result += segment.text
+
+        # 파일 정리
+        if os.path.exists(self.temp_audio_file):
+            os.remove(self.temp_audio_file)
+
+        return text_result.strip()

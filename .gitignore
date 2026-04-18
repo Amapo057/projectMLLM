@@ -30,6 +30,10 @@ analysis_benchmark.json
 /old
 /oldCode
 
+config.py
+token.json
+credentials.json
+
 # packages file containing multi-root paths
 .packages.generated
 

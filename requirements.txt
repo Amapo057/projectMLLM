@@ -8,8 +8,7 @@ google-genai
 openwakeword>=0.6.0
 
 # STT
-SpeechRecognition>=3.16.0
-SpeechRecognition[whisper-local]
+faster-whisper
 
 # TTS 및 오디오 재생
 edge-tts>=7.2.8
@@ -18,3 +17,8 @@ pygame>=2.6.0
 # Utility
 requests>=2.33.1
 python-dotenv>=1.2.2
+
+# Google API
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
