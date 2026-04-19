@@ -1,6 +1,5 @@
 # main.py
 import sys
-from dotenv import load_dotenv
 
 # 모든 서비스 임포트
 from services.wake_word_service import WakeWordService
@@ -13,8 +12,6 @@ from services.calender_service import CalendarService
 from services.bluetooth_service import BluetoothService
 
 def main():
-    load_dotenv()
-    
     print("="*50)
     print("시스템 초기화 중... (UI 비활성화 모드)")
     

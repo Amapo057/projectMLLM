@@ -29,7 +29,8 @@ class WakeWordService:
             channels=self.CHANNELS,
             rate=self.RATE,
             input=True,
-            frames_per_buffer=self.CHUNK
+            frames_per_buffer=self.CHUNK,
+            input_device_index=6
         )
         
         try:

@@ -12,8 +12,8 @@ class STTService:
         
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
-        self.RATE = 16000
-        self.CHUNK = 1024
+        self.RATE = 48000
+        self.CHUNK = 3840
         self.RECORD_SECONDS = 5 # 임시 녹음 시간 (또는 Vosk에서 넘어온 오디오 데이터 사용)
         self.temp_audio_file = "temp_user_voice.wav"
 
@@ -22,9 +22,14 @@ class STTService:
         
         # 1. 마이크 녹음 (예시용 기본 로직, 필요시 VAD로 말 끝남을 감지하도록 수정 가능)
         audio = pyaudio.PyAudio()
-        stream = audio.open(format=self.FORMAT, channels=self.CHANNELS,
-                            rate=self.RATE, input=True,
-                            frames_per_buffer=self.CHUNK)
+        stream = audio.open(
+            format=self.FORMAT, 
+            channels=self.CHANNELS,
+            rate=self.RATE, 
+            input=True,
+            frames_per_buffer=self.CHUNK,
+            input_device_index=6
+            )
         
         print("🎙️ 듣고 있습니다...")
         frames = []
