@@ -16,8 +16,8 @@ class WakeWordService:
         # PyAudio 오디오 스트림 설정
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
-        self.RATE = 16000
-        self.CHUNK = 1280
+        self.RATE = 48000
+        self.CHUNK = 3840
 
     def listen_for_wake_word(self, threshold=0.4) -> bool:
         """호출어가 감지될 때까지 대기합니다."""

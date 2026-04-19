@@ -18,7 +18,14 @@ pygame>=2.6.0
 requests>=2.33.1
 python-dotenv>=1.2.2
 
+# bluetooth
+pyserial
+
 # Google API
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+
+# conda
+# conda install -c conda-forge alsa-plugins
+# conda install -c conda-forge pyaudio
