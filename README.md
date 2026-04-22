@@ -7,6 +7,7 @@
 ### S22U
 #### Termux with llama.cpp
 <details>
+
 ##### 핸드폰
 - termux로 리눅스 환경 구성
 - 파이썬 서버로 전체 프로세스 관리
@@ -14,18 +15,18 @@
 	- llama.cpp 사용
 	- 4bit 양자화
 ##### llama.cpp
-	- vulkan api 사용해 gpu 성능 사용
-		- cmake가 불칸 못잡아 vulkan-headers와 vulkan-tools패키지 깔아 작동
-		- 사실 glslc 쉐이더 컴파일러가 없는거였음
-	- opencl로 변경
-		- gpu 경로꼬임
-		- ld_library_path넣음
-		- cmake가 꼬임
-		- termux랑 안드로이드 opencl 드라이버가 꼬임
-		- 폴더 만들어서 삼성 opencl 드라이버 가져옴
-		- 그래도 gpu 못잡아서 다시 경로 최적화하고 작성
-		- 또안됨
-  - gpu를 잡아서 테스트해봤으나 속도가 cpu랑 별 차이가 없었음...
+- vulkan api 사용해 gpu 성능 사용
+	- cmake가 불칸 못잡아 vulkan-headers와 vulkan-tools패키지 깔아 작동
+	- 사실 glslc 쉐이더 컴파일러가 없는거였음
+- opencl로 변경
+	- gpu 경로꼬임
+	- ld_library_path넣음
+	- cmake가 꼬임
+	- termux랑 안드로이드 opencl 드라이버가 꼬임
+	- 폴더 만들어서 삼성 opencl 드라이버 가져옴
+	- 그래도 gpu 못잡아서 다시 경로 최적화하고 작성
+	- 또안됨
+- gpu를 잡아서 테스트해봤으나 속도가 cpu랑 별 차이가 없었음...
 ---
 ##### 프로젝트 개선
 - phi-3에서 qwen3로 변경
@@ -50,7 +51,9 @@
 ---
 #### 날씨
 - openmeteo 사용
+
 </details>
+
 - 여러 방면으로 시도해봤으나 불편한 개발, stt 꼬임, 불안정한 환경과 mac mini구매로 해당 프로젝트 파기
 #### mlc-llm
 - 모바일에서 로컬 llm은 포기한 상태였으나 램 부족과 open claw로 인한 물량 부족으로 배송이 5달 가량 밀려 강제로 부활
