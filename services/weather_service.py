@@ -45,7 +45,7 @@ class WeatherService:
             return context
 
         except Exception as e:
-            print(f"[Weather Error] 날씨 조회 실패: {e}")
+            # print(f"[Weather Error] 날씨 조회 실패: {e}")
             return "현재 날씨 데이터를 가져오는 데 문제가 발생했습니다."
 
     def _decode_weather_code(self, code: int) -> str:

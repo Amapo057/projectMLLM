@@ -41,7 +41,7 @@ class GeminiService:
             )
             return response.text
         except Exception as e:
-            print(f"[Gemini Error] API 호출 중 오류 발생: {e}")
+            # print(f"[Gemini Error] API 호출 중 오류 발생: {e}")
             return "네트워크 연결이 원활하지 않거나 처리 중 오류가 발생했습니다."
 
 

@@ -23,7 +23,7 @@ class TTSService:
         if not text:
             return
 
-        print("🔊 음성 생성 중...")
+        # print("🔊 음성 생성 중...")
         
         # 1. 비동기 오디오 생성 함수를 동기적으로 실행
         asyncio.run(self._generate_audio(text))

@@ -38,7 +38,7 @@ class WakeWordService:
         # 임계값(threshold) 초과 여부 검사
         for wakeword, score in prediction.items():
             if score > threshold:
-                print(f"\n[디버그] 호출어 감지됨! (인식률: {score:.2f} / 기준치: {threshold})")
+                # print(f"\n[디버그] 호출어 감지됨! (인식률: {score:.2f} / 기준치: {threshold})")
                 return True
                 
         return False

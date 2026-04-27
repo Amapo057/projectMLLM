@@ -17,7 +17,7 @@ uint8_t idx = 0;
 
 void sendResponse(uint8_t cmd, uint8_t data) {
   uint8_t pkt[5] = {STX, cmd, data, ETX, (uint8_t)(cmd ^ data)};
-  bt.write(pkt, 5);
+  Serial.write(pkt, 5);
 }
 
 bool parsePacket(uint8_t* p) {
@@ -53,7 +53,7 @@ void setup() {
 }
 
 void loop() {
-  while (bt.available()) {
+  while (Serial.available()) {
     uint8_t b = bt.read();
     if (b == STX) idx = 0;       // STX 감지 시 버퍼 초기화
     buf[idx++] = b;

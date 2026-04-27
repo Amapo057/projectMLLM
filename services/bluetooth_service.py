@@ -43,17 +43,17 @@ class BluetoothService:
                 baudrate=self.baudrate, 
                 timeout=self.timeout
             )
-            print(f"[BluetoothService] Connected to {self.port} at {self.baudrate} baud.")
+            # print(f"[BluetoothService] Connected to {self.port} at {self.baudrate} baud.")
             return True
         except serial.SerialException as e:
-            print(f"[BluetoothService] Failed to connect to {self.port}: {e}")
+            # print(f"[BluetoothService] Failed to connect to {self.port}: {e}")
             return False
 
     def disconnect(self):
         """Disconnects the serial connection."""
         if self.serial_conn and self.serial_conn.is_open:
             self.serial_conn.close()
-            print("[BluetoothService] Disconnected.")
+            # print("[BluetoothService] Disconnected.")
 
     def send_command(self, cmd: int, data: int = 0x00) -> bool:
         """
@@ -61,7 +61,7 @@ class BluetoothService:
         Constructs the 5-byte packet and validates checksum on the response.
         """
         if not self.serial_conn or not self.serial_conn.is_open:
-            print("[BluetoothService] Error: Not connected.")
+            # print("[BluetoothService] Error: Not connected.")
             return False
 
         checksum = cmd ^ data
@@ -70,10 +70,10 @@ class BluetoothService:
         with self.lock:
             try:
                 self.serial_conn.write(packet)
-                # print(f"[BluetoothService] Sent: {[hex(x) for x in packet]}")
+                # # print(f"[BluetoothService] Sent: {[hex(x) for x in packet]}")
                 return self._wait_for_response(cmd)
             except Exception as e:
-                print(f"[BluetoothService] Error sending command: {e}")
+                # print(f"[BluetoothService] Error sending command: {e}")
                 return False
 
     def _wait_for_response(self, original_cmd: int) -> bool:
@@ -97,21 +97,21 @@ class BluetoothService:
                         resp_data = buf[2]
                         
                         if resp_cmd == self.ACK and resp_data == original_cmd:
-                            print(f"[BluetoothService] ACK received for command {hex(original_cmd)}")
+                            # print(f"[BluetoothService] ACK received for command {hex(original_cmd)}")
                             return True
                         elif resp_cmd == self.NAK:
-                            print(f"[BluetoothService] NAK received for command {hex(resp_data)}")
+                            # print(f"[BluetoothService] NAK received for command {hex(resp_data)}")
                             return False
                         else:
-                            print(f"[BluetoothService] Unexpected response: {hex(resp_cmd)}")
+                            # print(f"[BluetoothService] Unexpected response: {hex(resp_cmd)}")
                             return False
                     else:
-                        print("[BluetoothService] Invalid packet received (checksum/structure error).")
+                        # print("[BluetoothService] Invalid packet received (checksum/structure error).")
                         buf = bytearray() # Reset for next packet
             
             time.sleep(0.01)
             
-        print(f"[BluetoothService] Timeout waiting for response to command {hex(original_cmd)}.")
+        # print(f"[BluetoothService] Timeout waiting for response to command {hex(original_cmd)}.")
         return False
 
     def _parse_packet(self, packet: bytearray) -> bool:
@@ -128,17 +128,17 @@ class BluetoothService:
 
     def turn_on(self) -> bool:
         """Sends ON command to the light switch."""
-        print("[BluetoothService] Turning ON light...")
+        # print("[BluetoothService] Turning ON light...")
         return self.send_command(self.CMD_ON)
 
     def turn_off(self) -> bool:
         """Sends OFF command to the light switch."""
-        print("[BluetoothService] Turning OFF light...")
+        # print("[BluetoothService] Turning OFF light...")
         return self.send_command(self.CMD_OFF)
 
     def toggle(self) -> bool:
         """Sends TOGGLE command to the light switch."""
-        print("[BluetoothService] Toggling light...")
+        # print("[BluetoothService] Toggling light...")
         return self.send_command(self.CMD_TOGGLE)
 
 # Example Usage

@@ -35,6 +35,7 @@ class CalendarService:
             self.service = build('calendar', 'v3', credentials=self.creds)
         except HttpError as error:
             print(f'[Calendar Error] 서비스 생성 실패: {error}')
+            
 
     def get_upcoming_events_context(self) -> str:
         """오늘부터 향후 2주(14일)간의 일정을 가져와 브리핑 텍스트로 반환"""
@@ -47,7 +48,7 @@ class CalendarService:
             time_min = now.isoformat() + 'Z'  # 시작 시간 (현재)
             time_max = (now + datetime.timedelta(days=14)).isoformat() + 'Z' # 종료 시간 (14일 후)
 
-            print(f"[System] {now.date()}부터 14일간의 일정을 조회합니다...")
+            # print(f"[System] {now.date()}부터 14일간의 일정을 조회합니다...")
 
             events_result = self.service.events().list(
                 calendarId='primary', 
@@ -77,5 +78,5 @@ class CalendarService:
             return f"향후 2주간의 주요 일정입니다:\n" + "\n".join(event_list)
 
         except HttpError as error:
-            print(f'[Calendar Error] 일정 조회 실패: {error}')
+            # print(f'[Calendar Error] 일정 조회 실패: {error}')
             return "구글 캘린더에서 일정을 가져오는 중 오류가 발생했습니다."

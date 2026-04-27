@@ -34,6 +34,7 @@ config.py
 token.json
 credentials.json
 temp_response.mp3
+soundshelfstudio-ui-click-soft-.mp3
 
 # packages file containing multi-root paths
 .packages.generated

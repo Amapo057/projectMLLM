@@ -25,10 +25,10 @@ class BusService:
             
             try:
                 data = response.json()
-                print(f"버스 정보: {data}")
+                # print(f"버스 정보: {data}")
             except ValueError:
                 # JSON 파싱 에러 발생 시 (일반적으로 XML 에러 메시지가 리턴될 때)
-                print(f"[Bus Error] API 응답이 JSON 형식이 아닙니다: {response.text}")
+                # print(f"[Bus Error] API 응답이 JSON 형식이 아닙니다: {response.text}")
                 return "현재 버스 도착 정보를 가져오는 데 문제가 발생했습니다 (API 응답 오류)."
 
             items = data.get("response", {}).get("body", {}).get("items", {})
@@ -61,14 +61,14 @@ class BusService:
                 f"현재 집 앞 정류장의 버스 도착 정보입니다. {buses_str}. "
                 f"명령: 위 데이터를 바탕으로 사용자에게 '곧 도착할 버스는 ~번 버스이며, ~정거장 남았고, 약 ~분 뒤에 도착합니다' 같이 브리핑해주세요."
             )
-            print(f"\n[Bus Info] 수집된 버스 도착 정보:\n{buses_str}\n")
+            # print(f"\n[Bus Info] 수집된 버스 도착 정보:\n{buses_str}\n")
             return context
 
         except requests.exceptions.RequestException as e:
-            print(f"[Bus Error] 버스 정보 조회 실패: {e}")
+            # print(f"[Bus Error] 버스 정보 조회 실패: {e}")
             return "현재 버스 도착 정보를 통신 문제로 가져오지 못했습니다."
         except Exception as e:
-            print(f"[Bus Error] 예기치 않은 오류: {e}")
+            # print(f"[Bus Error] 예기치 않은 오류: {e}")
             return "현재 버스 도착 정보를 처리하는 중 오류가 발생했습니다."
 
 

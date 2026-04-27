@@ -1,5 +1,6 @@
 # UI
-PyQt6>=6.11.0
+# downgrade
+PyQt6>=6.4.2
 
 # LLM
 google-genai
