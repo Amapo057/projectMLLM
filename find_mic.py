@@ -1,14 +1,14 @@
-# find_mic.py
-import os
-# 💡 [핵심] 파이썬이 리눅스의 PipeWire 설정을 읽지 못하도록 차단!
-os.environ['ALSA_CONFIG_PATH'] = '/dev/null' 
 import pyaudio
 
-p = pyaudio.PyAudio()
-print("\n=== 깔끔해진 마이크 목록 ===")
-for i in range(p.get_device_count()):
-    dev = p.get_device_info_by_index(i)
-    if dev.get('maxInputChannels') > 0:
-        print(f"[{i}번] {dev.get('name')}")
-p.terminate()
-print("===============================\n")
+def list_audio_input_devices():
+    p = pyaudio.PyAudio()
+    print("=== 사용할 수 있는 오디오 입력 장치 목록 ===")
+    for i in range(p.get_device_count()):
+        dev_info = p.get_device_info_by_index(i)
+        # 입력 채널이 1개 이상인 장치만 필터링
+        if dev_info.get('maxInputChannels', 0) > 0:
+            print(f"Index [{i}] - {dev_info.get('name')}")
+    p.terminate()
+
+if __name__ == "__main__":
+    list_audio_input_devices()

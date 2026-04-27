@@ -33,6 +33,7 @@ analysis_benchmark.json
 config.py
 token.json
 credentials.json
+temp_response.mp3
 
 # packages file containing multi-root paths
 .packages.generated

@@ -28,4 +28,4 @@ google-auth-oauthlib
 
 # conda
 # conda install -c conda-forge alsa-plugins
-# conda install -c conda-forge pyaudio
+# conda install -c conda-forge pyaudio portaudio

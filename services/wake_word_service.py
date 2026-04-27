@@ -1,58 +1,48 @@
-# services/wake_word_service.py
-import pyaudio
+import subprocess
+import shutil
 import numpy as np
 from openwakeword.model import Model
 
 class WakeWordService:
     def __init__(self, custom_model_path="services/yo_kah_ee.onnx"):
-        print(f"[System] 커스텀 호출어 모델을 로드하는 중입니다... ({custom_model_path})")
+        # 1. 호출어 모델 로드 (이 부분이 누락되어서 에러가 발생했었습니다)
+        self.owwModel = Model(wakeword_models=[custom_model_path], inference_framework="onnx")
         
-        # 💡 핵심: 내장 모델 이름 대신, 내가 만든 파일의 '경로'를 직접 넘겨줍니다.
-        self.oww_model = Model(wakeword_models=[custom_model_path], inference_framework="onnx")
+        # 2. 오디오 스트림(arecord) 명령어 구성
+        base_cmd = ['arecord', '-D', 'pulse', '-r', '16000', '-c', '1', '-f', 'S16_LE', '-t', 'raw']
         
-        # oww_model.models 딕셔너리에서 로드된 커스텀 모델의 내부 키(이름)를 동적으로 가져옵니다.
-        self.wakeword = list(self.oww_model.models.keys())[0]
+        # 3. Flatpak(VS Code 샌드박스) 환경 우회 적용
+        if shutil.which('arecord') is None:
+            cmd = ['flatpak-spawn', '--host'] + base_cmd
+        else:
+            cmd = base_cmd
 
-        # PyAudio 오디오 스트림 설정
-        self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1
-        self.RATE = 48000
-        self.CHUNK = 3840
+        # 4. 백그라운드 오디오 녹음 프로세스 시작
+        self.audio_process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL
+        )
 
     def listen_for_wake_word(self, threshold=0.4) -> bool:
-        """호출어가 감지될 때까지 대기합니다."""
-        
-        # 마이크 점유율 충돌(Locking) 방지를 위해 매번 새로 엽니다.
-        audio = pyaudio.PyAudio() 
-        stream = audio.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            frames_per_buffer=self.CHUNK,
-            input_device_index=6
-        )
-        
-        try:
-            while True:
-                audio_data = stream.read(self.CHUNK, exception_on_overflow=False)
-                audio_np = np.frombuffer(audio_data, dtype=np.int16)
-                
-                # 모델 예측
-                prediction = self.oww_model.predict(audio_np)
-                
-                # 설정한 임계치(threshold)를 넘으면 감지 성공!
-                score = prediction[self.wakeword]
-                if score > threshold:
-                    # 필요하다면 여기서 print(f"감지 스코어: {score}") 를 찍어보셔도 좋습니다.
-                    return True
-                    
-        except Exception as e:
-            print(f"[WakeWord Error] 오디오 스트림 오류: {e}")
+        # 지정된 바이트만큼 오디오 데이터 읽기
+        raw_data = self.audio_process.stdout.read(2560)
+        if not raw_data:
             return False
             
-        finally:
-            # 완벽한 마이크 자원 해제
-            stream.stop_stream()
-            stream.close()
-            audio.terminate()
+        audio_data = np.frombuffer(raw_data, dtype=np.int16)
+        
+        # 모델 예측 (여기서 self.owwModel이 정상적으로 사용됩니다)
+        prediction = self.owwModel.predict(audio_data)
+        
+        # 임계값(threshold) 초과 여부 검사
+        for wakeword, score in prediction.items():
+            if score > threshold:
+                print(f"\n[디버그] 호출어 감지됨! (인식률: {score:.2f} / 기준치: {threshold})")
+                return True
+                
+        return False
+        
+    def close(self):
+        if hasattr(self, 'audio_process'):
+            self.audio_process.terminate()
