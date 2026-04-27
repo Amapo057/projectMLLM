@@ -166,3 +166,8 @@ class SystemService:
         except Exception as e:
             print(f"[오류] WOL 패킷 전송 중 예외 발생: {e}")
             return False
+        
+
+if __name__ == '__main__':
+    sysTest = SystemService
+    sysTest.enter_hard_sleep(12)
