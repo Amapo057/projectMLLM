@@ -1,8 +1,8 @@
-# 📖 Project Youkai (요카이) - AI Assistant Architecture & Guidelines
+# Project MLLM - AI Assistant Architecture & Guidelines
 
 ## 1. 프로젝트 개요 (Project Overview)
 본 프로젝트는 로컬 PC 및 스팀덱(SteamOS/Linux) 환경에서 자비스(Jarvis)처럼 작동하는 상시 대기(Always-on)하는 **음성 기반 데스크탑 AI 비서 파이프라인**을 구축하는 것을 목표로 한다. 
-호출어는 **"요카이(Youkai)"**이며, 시스템 리소스(배터리, CPU) 소모를 최소화하는 시스템을 만들어야 한다.
+시스템 리소스(배터리, CPU) 소모를 최소화하는 시스템을 만들어야 한다.
 
 ## 2. 코어 파이프라인 아키텍처 (Core Pipeline)
 전체 시스템은 동기/비동기 혼합 파이프라인으로 구성되며, 마이크 점유율 충돌(Locking)을 방지하기 위해 각 단계 완료 시 자원을 완벽히 해제(`terminate`)하는 것을 원칙으로 한다.
@@ -12,7 +12,7 @@
     * **버전:** `python 3.11.15` 사용
 1. **Wake Word (호출어 감지)**
    * **기술:** `open wake word 0.6.0`
-   * **전략:** `open wake word`의 colab 자체 학습으로 생성한 yo_kah_ee 호출어 사용
+   * **전략:** `open wake word`의 colab 자체 학습으로 생성한 호출어 사용
    * **장점:** 100% 오프라인 영구 무료, 라이선스/네트워크 제약 없음, CPU/배터리 점유율 극소화.
 2. **STT (사용자 음성 인식)**
    * **기술:** STT Service (마이크에서 사용자 명령 텍스트화)
