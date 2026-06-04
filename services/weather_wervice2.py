@@ -10,8 +10,8 @@ class WeatherService2:
     """KMA village forecast based weather context service."""
 
     URL = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst"
-    NX = 55
-    NY = 127
+    NX = config.NX
+    NY = config.NY
     START_HOUR = 6
     END_HOUR = 22
     CATEGORIES_PER_HOUR = 12
