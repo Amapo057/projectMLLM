@@ -9,7 +9,7 @@ class GeminiService:
     def __init__(self):
         self.client = genai.Client(api_key=GEMINI_API_KEY)
         
-        self.model_name = "gemini-3.1-flash-lite-preview"
+        self.model_name = "gemini-3.1-flash-lite"
         # self.model_name = "gemini-2.5-flash"
         
         # 비서의 페르소나 및 응답 규칙 설정

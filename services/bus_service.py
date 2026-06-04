@@ -1,9 +1,9 @@
 import requests
-import config
+from config import BUS_URL
 
 class BusService:
     def __init__(self):
-        self.url = config.BUS_URL
+        self.url = BUS_URL
         # 최소한의 사람인 척
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
